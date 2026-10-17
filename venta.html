@@ -1,0 +1,43 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FOG, your travel map</title><meta name="description" content="FOG colors a world map by the countries and cities you have visited. One payment of 4 EUR, no subscription, your data stays on your phone.">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#F5FBF8;--ink:#0E3B33;--muted:#4F6E66;--line:#D2E6DE;--card:#fff;--accent:#0B6E5A;--warm:#F5A623}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1A18;--ink:#E6F2EE;--muted:#9DB5AE;--line:#24382F;--card:#16241F;--accent:#5FD3B5}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+.w{max-width:880px;margin:0 auto;padding:0 20px}header{padding:48px 0 24px}
+h1{font-size:clamp(2.6rem,9vw,4.4rem);line-height:1;margin:0 0 10px;background:linear-gradient(120deg,#0EA5A4,#22C55E 50%,#F5A623);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:-.02em}
+.lead{font-size:1.25rem;color:var(--muted);margin:0 0 24px;max-width:34em}
+.cta{display:inline-block;background:var(--warm);color:#fff;font-weight:700;padding:14px 26px;border-radius:999px;text-decoration:none}
+.cta.off{opacity:.9}.price{margin-left:14px;color:var(--muted)}
+.shots{display:flex;gap:18px;flex-wrap:wrap;margin:36px 0}.shots img{width:min(100%,300px);border-radius:18px;border:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,.08)}
+h2{font-size:1.5rem;margin:44px 0 12px}ul{padding-left:1.2em}li{margin:6px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card b{display:block;margin-bottom:4px}footer{border-top:1px solid var(--line);margin-top:56px;padding:24px 0 48px;color:var(--muted);font-size:.9rem}
+footer a{color:var(--accent)}details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:10px 0}summary{cursor:pointer;font-weight:700}
+</style></head><body><div class="w">
+<header><h1>FOG</h1><p class="lead">The world without borders, colored by where you have been. Mark your countries and cities and watch your map fill in.</p>
+<a class="cta off" href="#buy" id="buy-top">Get FOG</a><span class="price">4 EUR, one payment, no subscription</span></header>
+<div class="shots"><img src="shot-countries.png" alt="FOG map with visited countries colored" width="300"><img src="shot-cities.png" alt="FOG cities view with dots for each visited city" width="300"></div>
+<h2>What it does</h2><div class="grid">
+<div class="card"><b>Countries</b>Tick the countries you have visited. They light up on the map, with your total out of 197 countries and the percentage you have visited.</div>
+<div class="card"><b>Cities</b>Pick a country, tap its main cities or search over 9,000, and each one you have visited appears as a dot. Tap a dot to see its name.</div>
+<div class="card"><b>Private by design</b>No account and no sign-up. Your map is stored on your own phone. You can save a backup file whenever you want and load it on another phone.</div>
+<div class="card"><b>Works as an app</b>Add it to your home screen from Safari (iPhone) or Chrome (iPhone or Android) and it opens like any other app, in full screen.</div></div>
+<h2 id="buy">Get FOG</h2>
+<p><b>4 EUR</b>, one payment. Use it on up to 3 of your devices with the license key you receive by email. Payments and VAT are handled by Lemon Squeezy, our reseller.</p>
+<p><a class="cta" id="buy-btn" href="#buy">Buy FOG, 4 EUR</a></p>
+<h2>Questions</h2>
+<details><summary>Do I need an account?</summary>No. You buy once, receive a license key by email, paste it into the app and that is it.</details>
+<details><summary>Where is my data?</summary>On your device only. We do not run servers that store your map. Save a backup from the app before you change phones or clear your browser data.</details>
+<details><summary>Which phones does it work on?</summary>Any modern iPhone or Android phone, and also computers, through the browser.</details>
+<details><summary>Can I get a refund?</summary>Yes, within 14 days of purchase, no questions asked. Request it from your Lemon Squeezy receipt email.</details>
+<h2 id="privacy">Privacy policy</h2>
+<p>FOG does not collect personal data. The countries and cities you mark are saved in your own browser storage on your device and are never sent to us. The app does not use analytics, advertising or tracking cookies. The only network request the paid app makes is to Lemon Squeezy's license service, to check that your license key is valid; this sends the key and a device label. Your purchase, payment and billing details are processed by Lemon Squeezy, which acts as the merchant of record, under its own privacy policy.</p>
+<h2 id="terms">Terms</h2>
+<p>FOG is sold as a license for personal use on up to 3 devices. The license is non-transferable. The app is provided as is, and your map data lives on your device, so you are responsible for keeping backups. City names come from GeoNames (geonames.org), licensed under Creative Commons Attribution 4.0. Purchases are made through Lemon Squeezy, which handles payment, taxes and invoices.</p>
+<h2 id="refund">Refund policy</h2>
+<p>You can request a full refund within 14 days of purchase. Contact us through the support link in your Lemon Squeezy receipt email.</p>
+<footer>FOG &middot; <a href="#privacy">Privacy</a> &middot; <a href="#terms">Terms</a> &middot; <a href="#refund">Refunds</a></footer></div>
+<script>/* set BUY once the Lemon Squeezy checkout link exists */var BUY="";if(BUY){["buy-top","buy-btn"].forEach(function(i){var a=document.getElementById(i);if(a)a.href=BUY;});}</script>
+</body></html>

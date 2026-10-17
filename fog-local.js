@@ -27,15 +27,16 @@
   function msg(t){ const el = document.getElementById("fogcopymsg"); if (el) el.textContent = t; }
   async function saveCopy(){
     const codes = (state.mapa && state.mapa.visitados && state.mapa.visitados.codes) || [];
+    const nc = ((state.mapa && state.mapa.ciudades && state.mapa.ciudades.list) || []).length;
     const txt = JSON.stringify({ app: "FOG", saved: new Date().toISOString(), data: state });
     const name = "FOG-mis-paises-" + new Date().toISOString().slice(0, 10) + ".json";
     const file = new File([txt], name, { type: "application/json" });
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: "Copia de FOG" }); msg(`Copia lista, ${codes.length} países. Guárdala en Archivos o mándatela por WhatsApp.`); return; }
+      if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: "Copia de FOG" }); msg(`Copia lista, ${codes.length} países y ${nc} ciudades. Guárdala en Archivos o mándatela por WhatsApp.`); return; }
     } catch(e){ if (e && e.name === "AbortError") return; }
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.append(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-    msg(`Copia descargada, ${codes.length} países.`);
+    msg(`Copia descargada, ${codes.length} países y ${nc} ciudades.`);
   }
   function loadCopy(f){
     const r = new FileReader();
@@ -45,8 +46,10 @@
         let v = d && d.data && d.data.mapa && d.data.mapa.visitados;
         if (!v && d && Array.isArray(d.codes)) v = d;
         if (!v || !Array.isArray(v.codes)) throw new Error("formato");
-        mutate(s => { (s.mapa = s.mapa || {}).visitados = { codes: v.codes, updatedAt: new Date().toISOString() }; });
-        msg(`Copia cargada, ${v.codes.length} países.`);
+        const cs = d && d.data && d.data.mapa && d.data.mapa.ciudades && Array.isArray(d.data.mapa.ciudades.list) ? d.data.mapa.ciudades.list : null;
+        mutate(s => { s.mapa = s.mapa || {}; s.mapa.visitados = { codes: v.codes, updatedAt: new Date().toISOString() };
+          if (cs) s.mapa.ciudades = { list: cs, updatedAt: new Date().toISOString() }; });
+        msg(`Copia cargada, ${v.codes.length} países` + (cs ? ` y ${cs.length} ciudades.` : "."));
       } catch(e){ msg("Ese archivo no es una copia de FOG."); }
     };
     r.readAsText(f);

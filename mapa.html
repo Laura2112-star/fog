@@ -85,7 +85,16 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
       <div class="stat"><b id="sCont">0</b><span>continentes</span></div>
       <div class="stat"><b id="sPct">0%</b><span>de la tierra</span></div>
     </div>
+    <div class="stats" id="statsC" hidden>
+      <div class="stat"><b id="cCount">0</b><span>ciudades</span></div>
+      <div class="stat"><b id="cPais">0</b><span>países</span></div>
+      <div class="stat"><b id="cCont">0</b><span>continentes</span></div>
+    </div>
   </header>
+  <div class="tabs" role="tablist" aria-label="Qué mostrar">
+    <button type="button" role="tab" id="tabP" aria-selected="true">Países</button>
+    <button type="button" role="tab" id="tabC" aria-selected="false">Ciudades</button>
+  </div>
 
   <div class="plate" id="plate">
     <svg id="map" viewBox="0 0 960 500" role="img" aria-label="Mapa del mundo con los países visitados resaltados"></svg>
@@ -97,7 +106,8 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
     <div class="legend"><span><i style="background:var(--visit)"></i>Visitado</span><span><i style="background:var(--land)"></i>Pendiente</span></div>
     <div class="tip" id="tip"></div>
   </div>
-  <p class="hint">Marca en la lista los países donde has estado, o tócalos directamente en el mapa. Arrastra y usa la rueda para hacer zoom.</p>
+  <p class="hint" id="hintC" hidden>Elige un país para ver sus ciudades principales, o acércate en el mapa y toca un punto para marcarla.</p>
+  <p class="hint" id="hintP">Marca en la lista los países donde has estado, o tócalos directamente en el mapa. Arrastra y usa la rueda para hacer zoom.</p>
 
   <div class="tools">
     <div class="search"><input id="q" type="search" placeholder="Buscar un país…" autocomplete="off" aria-label="Filtrar la lista de países"></div>
@@ -108,13 +118,23 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
     </div>
   </div>
 
-  <section>
+  <section id="regSec">
     <div class="register" id="reg"></div>
     <p class="status" id="status"></p>
   </section>
+
+  <section id="cityPanel" hidden>
+    <div class="cpick"><select id="cpais" aria-label="Elige un país para ver sus ciudades"><option value="">Elige un país para ver sus ciudades…</option></select><div class="chips" id="cchips"></div></div>
+    <div class="search csearch"><input id="cq" type="search" placeholder="¿No está? Búscala por su nombre…" autocomplete="off" aria-label="Buscar una ciudad para añadirla"></div>
+    <ul class="cres" id="cres"></ul>
+    <p class="status cstat" id="cstatus" aria-live="polite"></p>
+    <h3 class="ctitle">Mis ciudades</h3>
+    <div class="clist" id="clist"></div>
+  </section>
 </div>
 
-<script src="fog-local.js?v=1"></script>
+<script src="fog-local.js?v=2"></script>
+<script src="fog-ciudades.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
@@ -158,7 +178,7 @@ const tip=document.getElementById("tip"),plate=document.getElementById("plate");
 cs.on("mousemove",(e,f)=>{const r=plate.getBoundingClientRect();tip.textContent=META[f.id].n+(visited.has(f.id)?" ✓":"");
     tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.style.opacity=1;})
   .on("mouseleave",()=>tip.style.opacity=0)
-  .on("click",(e,f)=>toggle(f.id));
+  .on("click",(e,f)=>{if(cmode)return;toggle(f.id);});
 
 let k=1;
 const zoom=d3.zoom().scaleExtent([1,14]).translateExtent([[0,0],[W,H]]).on("zoom",e=>{g.attr("transform",e.transform);k=e.transform.k;drawDots();});
@@ -168,9 +188,10 @@ document.getElementById("zOut").onclick=()=>svg.transition().duration(250).call(
 document.getElementById("zReset").onclick=()=>svg.transition().duration(350).call(zoom.transform,d3.zoomIdentity);
 
 function drawDots(){
-  const data=feats.filter(f=>f.small&&visited.has(f.id));
+  const data=cmode?[]:feats.filter(f=>f.small&&visited.has(f.id));
   dots.selectAll("circle").data(data,f=>f.id).join("circle").attr("class","dot")
     .attr("cx",f=>f.cen[0]).attr("cy",f=>f.cen[1]).attr("r",4/Math.sqrt(k));
+  if(typeof drawCities==="function")drawCities();
 }
 function zoomTo(id){
   const f=feats.find(x=>x.id===id);if(!f)return;
@@ -252,6 +273,173 @@ function save(){
     .catch(()=>{status.textContent="No se pudo guardar en la nube; los cambios quedan en este navegador.";})
     .finally(()=>{writing=false;if(pending){pending=false;save();}});
 }
+
+// ---- ciudades (pestaña añadida)
+const LSC="mis-ciudades-v1",DOCC="mapa/ciudades";
+let cities=[];
+try{const s=JSON.parse(localStorage.getItem(LSC)||"null");if(Array.isArray(s))cities=s;}catch(e){}
+const A2ID={};for(const id in META)A2ID[META[id].a]=id;
+const cityG=g.append("g").attr("class","cities");
+const $=id=>document.getElementById(id);
+const cq=$("cq"),cres=$("cres"),clist=$("clist"),cstatus=$("cstatus");
+const xy=c=>proj([c.lon,c.lat]);
+const cname=(a,fb)=>A2ID[a]?META[A2ID[a]].n:(fb||a||"Otros");
+function showTip(e,txt){const r=plate.getBoundingClientRect();tip.textContent=txt;tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.style.opacity=1;}
+const DATA=window.FOG_CITIES||{};
+const candG=g.append("g").attr("class","cands");
+let cSel="";
+const CAND=[];for(const cc in DATA)DATA[cc].forEach((r,i)=>CAND.push({cc,r,i}));
+function candXY(o){return o.xy||(o.xy=proj([o.r[3],o.r[2]]));}
+function drawCands(){
+  const have=new Set(cities.map(c=>c.id));
+  let list=[];
+  if(cmode){
+    const t=d3.zoomTransform(svg.node());
+    const inView=o=>{const p=candXY(o),x=t.applyX(p[0]),y=t.applyY(p[1]);return x>=0&&x<=W&&y>=0&&y<=H;};
+    if(cSel)list=CAND.filter(o=>o.cc===cSel&&inView(o));
+    else if(k>=3)list=CAND.filter(inView).sort((a,b)=>a.i-b.i).slice(0,400);
+  }
+  const px=(svg.node().getBoundingClientRect().width||960)/960;
+  const u=1/(px*k);
+  const free=list.filter(o=>!have.has("g"+o.r[0]));
+  candG.selectAll("circle").data(free,o=>o.r[0]).join("circle").attr("class","cand")
+    .attr("cx",o=>candXY(o)[0]).attr("cy",o=>candXY(o)[1]).attr("r",5*u)
+    .on("click",(e,o)=>{e.stopPropagation();addC(fromData(o.cc,o.r));})
+    .on("mousemove",(e,o)=>showTip(e,o.r[1]+" · toca para marcar")).on("mouseleave",()=>tip.style.opacity=0);
+  const kept=[],boxes=[],fs=12*u;
+  for(const o of list.slice().sort((a,b)=>a.i-b.i)){
+    if(kept.length>=70)break;
+    const [x,y]=candXY(o),w=o.r[1].length*fs*.56+8*u,b=[x-6*u,y-fs*.8,x+w,y+fs*.5];
+    if(boxes.some(q=>b[0]<q[2]&&b[2]>q[0]&&b[1]<q[3]&&b[3]>q[1]))continue;
+    boxes.push(b);kept.push(o);
+  }
+  candG.selectAll("text").data(kept,o=>o.r[0]).join("text").attr("class",o=>"clab"+(have.has("g"+o.r[0])?" v":""))
+    .attr("x",o=>candXY(o)[0]+8*u).attr("y",o=>candXY(o)[1]+4*u).attr("font-size",12*u).attr("stroke-width",3*u).text(o=>o.r[1]);
+}
+const cpais=$("cpais"),cchips=$("cchips");
+Object.keys(DATA).filter(a=>A2ID[a]).sort((a,b)=>cname(a).localeCompare(cname(b),"es")).forEach(a=>{const op=document.createElement("option");op.value=a;op.textContent=cname(a);cpais.append(op);});
+let chipsAll=false;
+function zoomCountry(id){
+  const f=feats.find(x=>x.id===id);if(!f)return;
+  const [[x0,y0],[x1,y1]]=path.bounds(f.geo);
+  const s=Math.min(40,Math.max(1.5,0.85/Math.max((x1-x0)/W,(y1-y0)/H)));
+  svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(W/2,H/2).scale(s).translate(-(x0+x1)/2,-(y0+y1)/2));
+}
+zoom.scaleExtent([1,60]);
+cpais.onchange=()=>{cSel=cpais.value;chipsAll=false;renderChips();if(cSel){if(A2ID[cSel])zoomCountry(A2ID[cSel]);}else svg.transition().duration(350).call(zoom.transform,d3.zoomIdentity);drawCities();};
+function renderChips(){
+  cchips.textContent="";if(!cSel)return;
+  const have=new Set(cities.map(c=>c.id));const list=DATA[cSel]||[];
+  const shown=chipsAll?list:list.slice(0,30);
+  for(const r of shown){const b=document.createElement("button");b.type="button";b.textContent=r[1];const on=have.has("g"+r[0]);b.setAttribute("aria-pressed",on);
+    b.onclick=()=>{const c=fromData(cSel,r);if(on){const x=cities.find(y=>y.id===c.id);if(x)removeCity(x);}else addC(c);};cchips.append(b);}
+  if(!chipsAll&&list.length>30){const m=document.createElement("button");m.type="button";m.className="more";m.textContent="Ver todas ("+list.length+")";m.onclick=()=>{chipsAll=true;renderChips();};cchips.append(m);}
+}
+function drawCities(){
+  drawCands();
+  cityG.selectAll("circle").data(cmode?cities:[],c=>c.id).join("circle").attr("class","cdot")
+    .attr("cx",c=>xy(c)[0]).attr("cy",c=>xy(c)[1]).attr("r",3.4/Math.sqrt(k))
+    .on("mousemove",(e,c)=>showTip(e,c.n))
+    .on("click",(e,c)=>{e.stopPropagation();showTip(e,c.n);clearTimeout(drawCities.t);drawCities.t=setTimeout(()=>tip.style.opacity=0,2200);})
+    .on("mouseleave",()=>tip.style.opacity=0);
+}
+function zoomCity(c){
+  const [x,y]=xy(c);
+  svg.transition().duration(600).call(zoom.transform,d3.zoomIdentity.translate(W/2,H/2).scale(Math.max(k,24)).translate(-x,-y));
+  plate.scrollIntoView({behavior:"smooth",block:"center"});
+}
+function renderCities(){
+  drawCities();renderChips();
+  const ccs=new Set(cities.map(c=>c.cc).filter(Boolean));
+  $("cCount").textContent=cities.length;$("cPais").textContent=ccs.size;
+  $("cCont").textContent=new Set([...ccs].map(a=>A2ID[a]&&META[A2ID[a]].c).filter(Boolean)).size;
+  clist.textContent="";
+  if(!cities.length){const p=document.createElement("p");p.className="empty";p.textContent="Todavía no hay ciudades. Busca la primera aquí arriba.";clist.append(p);return;}
+  const groups=d3.group(cities,c=>c.cc||"");
+  const keys=[...groups.keys()].sort((a,b)=>cname(a,groups.get(a)[0].cn).localeCompare(cname(b,groups.get(b)[0].cn),"es"));
+  for(const a of keys){
+    const list=groups.get(a).slice().sort((x,y)=>x.n.localeCompare(y.n,"es"));
+    const box=document.createElement("div");box.className="cgrp";
+    const h=document.createElement("h3");
+    if(FLAGS[a]){const im=document.createElement("img");im.alt="";im.src=flagSrc(a);h.append(im);}
+    h.append(cname(a,list[0].cn));const sm=document.createElement("small");sm.textContent=list.length;h.append(sm);
+    const ul=document.createElement("ul");
+    for(const c of list){
+      const li=document.createElement("li");li.className="crow";
+      const nm=document.createElement("span");nm.className="nm";nm.textContent=c.n;
+      if(c.adm&&c.adm!==c.n){const s=document.createElement("small");s.textContent=c.adm;nm.append(s);}
+      const go=document.createElement("button");go.type="button";go.textContent="Ver";go.setAttribute("aria-label","Ver "+c.n+" en el mapa");go.onclick=()=>zoomCity(c);
+      const rm=document.createElement("button");rm.type="button";rm.textContent="Quitar";rm.setAttribute("aria-label","Quitar "+c.n);rm.onclick=()=>removeCity(c);
+      li.append(nm,go,rm);ul.append(li);
+    }
+    box.append(h,ul);clist.append(box);
+  }
+}
+function say(txt,undo){
+  cstatus.textContent=txt;
+  if(undo){const b=document.createElement("button");b.type="button";b.textContent="Deshacer";b.onclick=()=>{undo();cstatus.textContent="";};cstatus.append(" ",b);}
+}
+function addCity(r){
+  addC({id:"g"+r.id,n:r.name,adm:r.admin1||"",cc:(r.country_code||"").toUpperCase(),cn:r.country||"",lat:+(+r.latitude).toFixed(4),lon:+(+r.longitude).toFixed(4)});
+}
+const fromData=(cc,r)=>({id:"g"+r[0],n:r[1],adm:"",cc,cn:cname(cc),lat:r[2],lon:r[3]});
+function addC(c){
+  if(cities.some(x=>x.id===c.id)){say(c.n+" ya está en tu lista.");return;}
+  cities.push(c);saveCities();
+  let extra="";const pid=A2ID[c.cc];
+  if(pid&&!visited.has(pid)){visited.add(pid);render();save();extra=" También he marcado "+META[pid].n+" en tus países.";}
+  renderCities();
+  cq.value="";cres.textContent="";
+  say(c.n+" añadida."+extra,()=>removeCity(c,true));
+}
+function removeCity(c,silent){
+  cities=cities.filter(x=>x.id!==c.id);renderCities();saveCities();
+  if(!silent)say("Has quitado "+c.n+".",()=>{cities.push(c);renderCities();saveCities();});
+}
+let st=null,seq=0;
+cq.addEventListener("input",()=>{clearTimeout(st);const t=cq.value.trim();if(t.length<2){seq++;cres.textContent="";return;}st=setTimeout(()=>search(t),300);});
+cq.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const b=cres.querySelector("button:not(:disabled)");if(b)b.click();}});
+async function search(t){
+  const my=++seq;
+  try{
+    const r=await fetch("https://geocoding-api.open-meteo.com/v1/search?count=8&language=es&format=json&name="+encodeURIComponent(t));
+    const j=await r.json();if(my!==seq)return;
+    const res=(j&&j.results)||[];cres.textContent="";
+    if(!res.length){const li=document.createElement("li");li.className="cnone";li.textContent="No encuentro ninguna ciudad con ese nombre.";cres.append(li);return;}
+    for(const x of res){
+      const li=document.createElement("li");const b=document.createElement("button");b.type="button";
+      const a=(x.country_code||"").toUpperCase();
+      if(FLAGS[a]){const im=document.createElement("img");im.alt="";im.src=flagSrc(a);b.append(im);}
+      const nm=document.createElement("b");nm.textContent=x.name;
+      const sp=document.createElement("span");sp.textContent=[x.admin1,x.country].filter((v,i,arr)=>v&&v!==x.name&&arr.indexOf(v)===i).join(", ");
+      const em=document.createElement("em");const has=cities.some(c=>c.id==="g"+x.id);em.textContent=has?"Ya está":"Añadir";b.disabled=has;
+      b.append(nm,sp,em);b.onclick=()=>addCity(x);li.append(b);cres.append(li);
+    }
+  }catch(e){if(my!==seq)return;cres.textContent="";const li=document.createElement("li");li.className="cnone";li.textContent="No se ha podido buscar. Revisa la conexión.";cres.append(li);}
+}
+let cwriting=false,cpending=false,cStamp="";
+function saveCities(){
+  cStamp=new Date().toISOString();
+  try{localStorage.setItem(LSC,JSON.stringify(cities));}catch(e){}
+  if(!db)return;
+  if(cwriting){cpending=true;return;}
+  cwriting=true;
+  db.doc(DOCC).set({list:cities,updatedAt:cStamp})
+    .catch(()=>{cstatus.textContent="No se pudo guardar; los cambios quedan en este navegador.";})
+    .finally(()=>{cwriting=false;if(cpending){cpending=false;saveCities();}});
+}
+let cmode=false;
+function setMode(m){
+  cmode=m;document.body.classList.toggle("mc",m);
+  $("tabP").setAttribute("aria-selected",!m);$("tabC").setAttribute("aria-selected",m);
+  document.querySelector("header .stats:not(#statsC)").hidden=m;$("statsC").hidden=!m;
+  $("hintP").hidden=m;$("hintC").hidden=!m;$("cityPanel").hidden=!m;
+  tip.style.opacity=0;drawDots();
+  try{localStorage.setItem("fog.tab",m?"c":"p");}catch(e){}
+}
+$("tabP").onclick=()=>setMode(false);$("tabC").onclick=()=>setMode(true);
+renderCities();
+try{if(localStorage.getItem("fog.tab")==="c")setMode(true);}catch(e){}
 render();
 if(window.claude&&claude.use){
   claude.use("db").then(d=>{
@@ -262,11 +450,56 @@ if(window.claude&&claude.use){
       if(snap.exists){const c=(snap.data()||{}).codes;if(Array.isArray(c)){visited=new Set(c.filter(id=>META[id]));render();
         try{localStorage.setItem(LS,JSON.stringify([...visited]));}catch(e){}}}
     },()=>{status.textContent="Sin conexión con la nube; usando la copia de este navegador.";});
+    db.doc(DOCC).onSnapshot(snap=>{
+      if(cwriting||cpending)return;
+      if(snap.exists){const d=snap.data()||{},l=d.list;if(Array.isArray(l)&&(!d.updatedAt||d.updatedAt>cStamp||!cStamp)){if(d.updatedAt)cStamp=d.updatedAt;cities=l;renderCities();
+        try{localStorage.setItem(LSC,JSON.stringify(cities));}catch(e){}}}
+    },()=>{});
   });
 }else{status.textContent="Guardado solo en este navegador.";}
 })();
 </script>
 
+
+<style id="fog-cities">
+.tabs{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px;align-self:flex-start;margin:-6px 0 -4px}
+.tabs button{border:0;background:none;font:inherit;font-size:.95rem;font-weight:600;color:var(--muted);padding:8px 20px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+body.mc .tools,body.mc #regSec{display:none}
+body.mc #map path.v{fill-opacity:.32}
+.cdot{fill:var(--visit-ink);stroke:#fff;stroke-width:1.4;vector-effect:non-scaling-stroke;cursor:pointer}
+#cityPanel{display:flex;flex-direction:column;gap:14px}
+#cityPanel[hidden]{display:none}
+.csearch{max-width:560px}
+.cres{list-style:none;margin:-6px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;max-width:560px}
+.cres button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;padding:9px 12px;border-radius:8px;cursor:pointer}
+.cres button img{width:22px;height:16.5px;flex:none;border-radius:2px;box-shadow:0 0 0 1px var(--line);object-fit:cover}
+.cres button span{color:var(--muted);font-size:.85rem;flex:1;min-width:0}
+.cres button em{font-style:normal;font-weight:700;color:var(--visit-ink);font-size:.85rem;flex:none}
+.cres button:disabled{opacity:.6;cursor:default}
+.cnone{color:var(--muted);font-size:.9rem;padding:4px 2px}
+.clist{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px 28px;align-items:start}
+.cgrp h3{font-family:var(--display);font-weight:500;font-size:1.05rem;margin:0 0 6px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.cgrp h3 img{width:24px;height:18px;border-radius:2px;box-shadow:0 0 0 1px var(--line);object-fit:cover}
+.cgrp h3 small{margin-left:auto;color:var(--muted);font-family:var(--body);font-size:.85rem}
+.cgrp ul{list-style:none;margin:0;padding:0}
+.crow{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:6px}
+.crow .nm{flex:1;min-width:0;font-weight:700}
+.crow .nm small{color:var(--muted);font-weight:400;margin-left:6px}
+.crow button,.cstat button{border:none;background:none;color:var(--muted);cursor:pointer;font:inherit;font-size:.82rem;padding:3px 7px;border-radius:5px}
+.crow button:hover,.cstat button:hover{background:var(--sea);color:var(--ink)}
+.cstat button{color:var(--visit-ink);font-weight:700}
+.cpick{display:flex;flex-direction:column;gap:10px}
+.cpick select{font:inherit;font-size:1rem;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);max-width:560px;width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:.9rem;padding:6px 12px;border-radius:999px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--visit-ink);border-color:var(--visit-ink);color:#fff;font-weight:700}
+.chips button.more{border-style:dashed;color:var(--muted)}
+.cand{fill:var(--card);stroke:var(--visit-ink);stroke-width:1.3;vector-effect:non-scaling-stroke;cursor:pointer}
+.clab{fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round;pointer-events:none;font-family:var(--body)}
+.clab.v{font-weight:700}
+.ctitle{font-family:var(--display);font-weight:500;font-size:1.05rem;margin:6px 0 0}
+</style>
 <style id="fog-tropico">
 /* Tema Trópico */
 html:root{--bg:#F5FBF8;--sea:#E2F3EE;--land:#CFE1DA;--hover:#AFCBC1;--visit:#F5A623;--visit-ink:#0B6E5A;--ink:#0E3B33;--muted:#4F6E66;--line:#D2E6DE;--card:#FFFFFF;color-scheme:light}

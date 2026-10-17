@@ -9,6 +9,10 @@ Mapa del mundo con los países visitados.
   - Tema de colores "Trópico" (bloque `<style id="fog-tropico">` y el degradado `fogGrad` al final de `index.html`).
   - Iconos y `manifest.webmanifest` para el móvil.
 
+## Pestaña Ciudades
+
+Las dos versiones tienen una pestaña **Ciudades**: desplegable por país con sus ciudades principales (`fog-ciudades.js`, datos de GeoNames con nombres en español para las más conocidas), puntos en el mapa al acercarse (se tocan para marcarlas) y buscador de cualquier ciudad (API de geocodificación de Open-Meteo). Se guardan en el documento `mapa/ciudades` (`{list: [{id, n, adm, cc, cn, lat, lon}], updatedAt}`); al añadir una ciudad se marca también su país.
+
 ## Versión sin cuenta (mapa.html)
 
 https://laura2112-star.github.io/fog/mapa.html es la misma app sin Google: usa `fog-local.js`, que guarda los países en el propio móvil (localStorage) y añade los botones **Guardar copia** y **Cargar copia** (archivo JSON con el mismo formato que `fog-datos.json`). Tiene su propio `mapa.webmanifest`. Es la que usa el hijo de Laura.

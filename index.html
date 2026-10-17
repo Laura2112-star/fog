@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><title>FOG</title><meta name="theme-color" content="#EDF0EE"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="FOG"><link rel="apple-touch-icon" href="icon-180.png?v=1"><link rel="icon" type="image/png" href="icon-192.png?v=1"><link rel="manifest" href="manifest.webmanifest?v=1"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html data-theme="light"><head><meta charset=utf8><title>FOG</title><meta name="theme-color" content="#F5FBF8"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="FOG"><link rel="apple-touch-icon" href="icon-180.png?v=1"><link rel="icon" type="image/png" href="icon-192.png?v=1"><link rel="manifest" href="manifest.webmanifest?v=1"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>FOG</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -267,4 +267,22 @@ if(window.claude&&claude.use){
 })();
 </script>
 
+<style id="fog-tropico">
+/* Tema Trópico */
+html:root{--bg:#F5FBF8;--sea:#E2F3EE;--land:#CFE1DA;--hover:#AFCBC1;--visit:#F5A623;--visit-ink:#0B6E5A;--ink:#0E3B33;--muted:#4F6E66;--line:#D2E6DE;--card:#FFFFFF;color-scheme:light}
+h1,.stat b{background:linear-gradient(120deg,#0EA5A4 0%,#22C55E 50%,#FACC15 100%);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+#map path.v{fill:url(#fogGrad)!important}
+</style>
+<script>
+(function(){
+  function addGrad(){
+    var svg=document.getElementById("map"); if(!svg){return setTimeout(addGrad,50);}
+    if(document.getElementById("fogGrad")) return;
+    var ns="http://www.w3.org/2000/svg", defs=document.createElementNS(ns,"defs");
+    defs.innerHTML='<linearGradient id="fogGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="960" y2="500"><stop offset="0%" stop-color="#0EA5E9"/><stop offset="33%" stop-color="#10B981"/><stop offset="66%" stop-color="#FACC15"/><stop offset="100%" stop-color="#F97316"/></linearGradient>';
+    svg.insertBefore(defs, svg.firstChild);
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",addGrad); else addGrad();
+})();
+</script>
 </body></html>

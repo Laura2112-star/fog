@@ -106,7 +106,7 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
     <div class="legend"><span><i style="background:var(--visit)"></i>Visitado</span><span><i style="background:var(--land)"></i>Pendiente</span></div>
     <div class="tip" id="tip"></div>
   </div>
-  <p class="hint" id="hintC" hidden>Elige un país para ver sus ciudades principales, o acércate en el mapa y toca un punto para marcarla.</p>
+  <p class="hint" id="hintC" hidden>Elige un país para marcar sus ciudades, o búscalas por su nombre. En el mapa verás un punto por cada ciudad donde has estado: tócalo para ver cuál es.</p>
   <p class="hint" id="hintP">Marca en la lista los países donde has estado, o tócalos directamente en el mapa. Arrastra y usa la rueda para hacer zoom.</p>
 
   <div class="tools">
@@ -124,7 +124,7 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
   </section>
 
   <section id="cityPanel" hidden>
-    <div class="cpick"><select id="cpais" aria-label="Elige un país para ver sus ciudades"><option value="">Elige un país para ver sus ciudades…</option></select><div class="chips" id="cchips"></div></div>
+    <div class="cpick"><select id="cpais" aria-label="Elige un país para ver sus ciudades"><option value="">Elige un país para ver sus ciudades…</option></select><div class="chips" id="cchips"></div><button type="button" class="cdone" id="cdone" hidden>✓ Listo, volver al mapa del mundo</button></div>
     <div class="search csearch"><input id="cq" type="search" placeholder="¿No está? Búscala por su nombre…" autocomplete="off" aria-label="Buscar una ciudad para añadirla"></div>
     <ul class="cres" id="cres"></ul>
     <p class="status cstat" id="cstatus" aria-live="polite"></p>
@@ -206,7 +206,7 @@ function render(){
   cs.classed("v",f=>visited.has(f.id));
   drawDots();
   const ids=[...visited].filter(id=>META[id]);
-  document.getElementById("sCount").textContent=ids.length;
+  document.getElementById("sCount").innerHTML=ids.length+'<small class="tot"> / '+Object.keys(META).length+'</small>';
   const conts=new Set(ids.map(id=>META[id].c));
   document.getElementById("sCont").textContent=conts.size;
   const a=d3.sum(feats.filter(f=>visited.has(f.id)&&f.id!=="010"),f=>f.area);
@@ -287,38 +287,15 @@ const cname=(a,fb)=>A2ID[a]?META[A2ID[a]].n:(fb||a||"Otros");
 function showTip(e,txt){const r=plate.getBoundingClientRect();tip.textContent=txt;tip.style.left=(e.clientX-r.left)+"px";tip.style.top=(e.clientY-r.top)+"px";tip.style.opacity=1;}
 const DATA=window.FOG_CITIES||{};
 const candG=g.append("g").attr("class","cands");
+const hitG=g.append("g").attr("class","chits");
 let cSel="";
 const CAND=[];for(const cc in DATA)DATA[cc].forEach((r,i)=>CAND.push({cc,r,i}));
 function candXY(o){return o.xy||(o.xy=proj([o.r[3],o.r[2]]));}
-function drawCands(){
-  const have=new Set(cities.map(c=>c.id));
-  let list=[];
-  if(cmode){
-    const t=d3.zoomTransform(svg.node());
-    const inView=o=>{const p=candXY(o),x=t.applyX(p[0]),y=t.applyY(p[1]);return x>=0&&x<=W&&y>=0&&y<=H;};
-    if(cSel)list=CAND.filter(o=>o.cc===cSel&&inView(o));
-    else if(k>=3)list=CAND.filter(inView).sort((a,b)=>a.i-b.i).slice(0,400);
-  }
-  const px=(svg.node().getBoundingClientRect().width||960)/960;
-  const u=1/(px*k);
-  const free=list.filter(o=>!have.has("g"+o.r[0]));
-  candG.selectAll("circle").data(free,o=>o.r[0]).join("circle").attr("class","cand")
-    .attr("cx",o=>candXY(o)[0]).attr("cy",o=>candXY(o)[1]).attr("r",5*u)
-    .on("click",(e,o)=>{e.stopPropagation();addC(fromData(o.cc,o.r));})
-    .on("mousemove",(e,o)=>showTip(e,o.r[1]+" · toca para marcar")).on("mouseleave",()=>tip.style.opacity=0);
-  const kept=[],boxes=[],fs=12*u;
-  for(const o of list.slice().sort((a,b)=>a.i-b.i)){
-    if(kept.length>=70)break;
-    const [x,y]=candXY(o),w=o.r[1].length*fs*.56+8*u,b=[x-6*u,y-fs*.8,x+w,y+fs*.5];
-    if(boxes.some(q=>b[0]<q[2]&&b[2]>q[0]&&b[1]<q[3]&&b[3]>q[1]))continue;
-    boxes.push(b);kept.push(o);
-  }
-  candG.selectAll("text").data(kept,o=>o.r[0]).join("text").attr("class",o=>"clab"+(have.has("g"+o.r[0])?" v":""))
-    .attr("x",o=>candXY(o)[0]+8*u).attr("y",o=>candXY(o)[1]+4*u).attr("font-size",12*u).attr("stroke-width",3*u).text(o=>o.r[1]);
-}
+function drawCands(){candG.selectAll("*").remove();}
 const cpais=$("cpais"),cchips=$("cchips");
 Object.keys(DATA).filter(a=>A2ID[a]).sort((a,b)=>cname(a).localeCompare(cname(b),"es")).forEach(a=>{const op=document.createElement("option");op.value=a;op.textContent=cname(a);cpais.append(op);});
 let chipsAll=false;
+$("cdone").onclick=()=>{cpais.value="";cpais.onchange();say("");document.getElementById("plate").scrollIntoView({behavior:"smooth",block:"center"});};
 function zoomCountry(id){
   const f=feats.find(x=>x.id===id);if(!f)return;
   const [[x0,y0],[x1,y1]]=path.bounds(f.geo);
@@ -326,7 +303,7 @@ function zoomCountry(id){
   svg.transition().duration(700).call(zoom.transform,d3.zoomIdentity.translate(W/2,H/2).scale(s).translate(-(x0+x1)/2,-(y0+y1)/2));
 }
 zoom.scaleExtent([1,60]);
-cpais.onchange=()=>{cSel=cpais.value;chipsAll=false;renderChips();if(cSel){if(A2ID[cSel])zoomCountry(A2ID[cSel]);}else svg.transition().duration(350).call(zoom.transform,d3.zoomIdentity);drawCities();};
+cpais.onchange=()=>{cSel=cpais.value;$("cdone").hidden=!cSel;chipsAll=false;renderChips();if(cSel){if(A2ID[cSel])zoomCountry(A2ID[cSel]);}else svg.transition().duration(350).call(zoom.transform,d3.zoomIdentity);drawCities();};
 function renderChips(){
   cchips.textContent="";if(!cSel)return;
   const have=new Set(cities.map(c=>c.id));const list=DATA[cSel]||[];
@@ -337,10 +314,14 @@ function renderChips(){
 }
 function drawCities(){
   drawCands();
-  cityG.selectAll("circle").data(cmode?cities:[],c=>c.id).join("circle").attr("class","cdot")
-    .attr("cx",c=>xy(c)[0]).attr("cy",c=>xy(c)[1]).attr("r",3.4/Math.sqrt(k))
-    .on("mousemove",(e,c)=>showTip(e,c.n))
-    .on("click",(e,c)=>{e.stopPropagation();showTip(e,c.n);clearTimeout(drawCities.t);drawCities.t=setTimeout(()=>tip.style.opacity=0,2200);})
+  const list=cmode?cities:[];
+  cityG.selectAll("circle").data(list,c=>c.id).join("circle").attr("class","cdot")
+    .attr("cx",c=>xy(c)[0]).attr("cy",c=>xy(c)[1]).attr("r",3.4/Math.sqrt(k));
+  const px=(svg.node().getBoundingClientRect().width||960)/960;
+  hitG.selectAll("circle").data(list,c=>c.id).join("circle").attr("class","chit")
+    .attr("cx",c=>xy(c)[0]).attr("cy",c=>xy(c)[1]).attr("r",Math.max(3.4/Math.sqrt(k),14/(px*k)))
+    .on("mousemove",(e,c)=>showTip(e,c.n+" · "+cname(c.cc,c.cn)))
+    .on("click",(e,c)=>{e.stopPropagation();showTip(e,c.n+" · "+cname(c.cc,c.cn));clearTimeout(drawCities.t);drawCities.t=setTimeout(()=>tip.style.opacity=0,3500);})
     .on("mouseleave",()=>tip.style.opacity=0);
 }
 function zoomCity(c){
@@ -495,6 +476,10 @@ body.mc #map path.v{fill-opacity:.32}
 .chips button{border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:.9rem;padding:6px 12px;border-radius:999px;cursor:pointer}
 .chips button[aria-pressed="true"]{background:var(--visit-ink);border-color:var(--visit-ink);color:#fff;font-weight:700}
 .chips button.more{border-style:dashed;color:var(--muted)}
+.chit{fill:transparent;cursor:pointer}
+.cdone{align-self:flex-start;border:0;border-radius:999px;background:var(--ink);color:var(--bg);font:inherit;font-weight:700;font-size:.95rem;padding:10px 18px;cursor:pointer}
+.cdone[hidden]{display:none}
+.stat b small.tot{font-size:.5em;font-weight:500;letter-spacing:0}
 .cand{fill:var(--card);stroke:var(--visit-ink);stroke-width:1.3;vector-effect:non-scaling-stroke;cursor:pointer}
 .clab{fill:var(--ink);paint-order:stroke;stroke:var(--card);stroke-width:3px;stroke-linejoin:round;pointer-events:none;font-family:var(--body)}
 .clab.v{font-weight:700}

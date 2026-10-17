@@ -9,6 +9,10 @@ Mapa del mundo con los países visitados.
   - Tema de colores "Trópico" (bloque `<style id="fog-tropico">` y el degradado `fogGrad` al final de `index.html`).
   - Iconos y `manifest.webmanifest` para el móvil.
 
+## Idioma
+
+Todo FOG está en inglés (textos, nombres de países y de ciudades). Los nombres de países salen de `Intl.DisplayNames` y los de ciudades de `fog-ciudades.js`; el buscador de ciudades pide los resultados en inglés (`language=en`).
+
 ## Pestaña Ciudades
 
 Las dos versiones tienen una pestaña **Ciudades**: desplegable por país con sus ciudades principales (`fog-ciudades.js`, datos de GeoNames con nombres en español para las más conocidas), puntos en el mapa al acercarse (se tocan para marcarlas) y buscador de cualquier ciudad (API de geocodificación de Open-Meteo). Se guardan en el documento `mapa/ciudades` (`{list: [{id, n, adm, cc, cn, lat, lon}], updatedAt}`); al añadir una ciudad se marca también su país.

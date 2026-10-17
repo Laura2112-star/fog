@@ -1,5 +1,5 @@
-/* FOG sin cuenta: guarda los países en el propio dispositivo (localStorage).
-   Misma interfaz que fog-shim.js (window.claude.use("db")), más botones para guardar y cargar una copia. */
+/* FOG without an account: saves countries on the device itself (localStorage).
+   Same interface as fog-shim.js (window.claude.use("db")), plus buttons to save and load a backup copy. */
 (() => {
   "use strict";
   const KEY = "foglocal.data";
@@ -23,20 +23,20 @@
     onSnapshot(cb){ const l = { path, cb }; listeners.push(l); setTimeout(() => cb(snap(path)), 0); return () => { const i = listeners.indexOf(l); if (i >= 0) listeners.splice(i, 1); }; }
   }; } };
 
-  /* ---------- copia de seguridad ---------- */
+  /* ---------- backup copy ---------- */
   function msg(t){ const el = document.getElementById("fogcopymsg"); if (el) el.textContent = t; }
   async function saveCopy(){
     const codes = (state.mapa && state.mapa.visitados && state.mapa.visitados.codes) || [];
     const nc = ((state.mapa && state.mapa.ciudades && state.mapa.ciudades.list) || []).length;
     const txt = JSON.stringify({ app: "FOG", saved: new Date().toISOString(), data: state });
-    const name = "FOG-mis-paises-" + new Date().toISOString().slice(0, 10) + ".json";
+    const name = "FOG-my-countries-" + new Date().toISOString().slice(0, 10) + ".json";
     const file = new File([txt], name, { type: "application/json" });
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: "Copia de FOG" }); msg(`Copia lista, ${codes.length} países y ${nc} ciudades. Guárdala en Archivos o mándatela por WhatsApp.`); return; }
+      if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: "FOG backup" }); msg(`Backup ready: ${codes.length} countries and ${nc} cities. Save it in Files or send it to yourself on WhatsApp.`); return; }
     } catch(e){ if (e && e.name === "AbortError") return; }
     const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.append(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-    msg(`Copia descargada, ${codes.length} países y ${nc} ciudades.`);
+    msg(`Backup downloaded: ${codes.length} countries and ${nc} cities.`);
   }
   function loadCopy(f){
     const r = new FileReader();
@@ -49,8 +49,8 @@
         const cs = d && d.data && d.data.mapa && d.data.mapa.ciudades && Array.isArray(d.data.mapa.ciudades.list) ? d.data.mapa.ciudades.list : null;
         mutate(s => { s.mapa = s.mapa || {}; s.mapa.visitados = { codes: v.codes, updatedAt: new Date().toISOString() };
           if (cs) s.mapa.ciudades = { list: cs, updatedAt: new Date().toISOString() }; });
-        msg(`Copia cargada, ${v.codes.length} países` + (cs ? ` y ${cs.length} ciudades.` : "."));
-      } catch(e){ msg("Ese archivo no es una copia de FOG."); }
+        msg(`Backup loaded: ${v.codes.length} countries` + (cs ? ` and ${cs.length} cities.` : "."));
+      } catch(e){ msg("That file is not a FOG backup."); }
     };
     r.readAsText(f);
   }
@@ -62,8 +62,8 @@
       .fogcopy button.sec{background:transparent;color:var(--ink,#1C2A2E);border:1px solid var(--line,#CDD5D2)}`;
     document.head.append(css);
     const box = document.createElement("section"); box.className = "fogcopy";
-    box.innerHTML = `<p><b>Tus países se guardan en este móvil.</b> Si vas a cambiar de móvil o borrar la app, guarda antes una copia.</p>
-      <div class="fogrow"><button type="button" id="fogsave">Guardar copia</button><button type="button" class="sec" id="fogload">Cargar copia</button></div>
+    box.innerHTML = `<p><b>Your countries are saved on this phone.</b> If you are going to change phones or delete the app, save a backup first.</p>
+      <div class="fogrow"><button type="button" id="fogsave">Save backup</button><button type="button" class="sec" id="fogload">Load backup</button></div>
       <input type="file" id="fogfile" accept=".json,application/json" hidden><p id="fogcopymsg" aria-live="polite"></p>`;
     (document.querySelector(".wrap") || document.body).append(box);
     box.querySelector("#fogsave").onclick = saveCopy;

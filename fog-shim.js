@@ -1,6 +1,6 @@
-/* FOG: puente con Google Drive.
-   Sustituye el almacenamiento de Claude por un archivo en el Drive del usuario: FOG/fog-datos.json
-   Comparte la sesión de Google con Wanderlust (misma dirección web). */
+/* FOG: Google Drive bridge.
+   Replaces Claude storage with a file in the user's Drive: FOG/fog-datos.json
+   Shares the Google session with Wanderlust (same web address). */
 (() => {
   "use strict";
   const CLIENT_ID = "1001663742263-c8898sk2hg3pnrd967un6ed4sednge6a.apps.googleusercontent.com";
@@ -158,18 +158,18 @@
     if (gate) return;
     gate = document.createElement("div"); gate.className = "foggate";
     gate.innerHTML = `<div class="box"><h2>FOG</h2>
-      <p>${msg || "Tus países se guardan en tu Google Drive. Entra con tu cuenta de Google para verlos."}</p>
-      <button class="fogbtn" type="button" id="fogin">Entrar con Google</button><p style="font-size:12px" id="fogerr"></p></div>`;
+      <p>${msg || "Your countries are saved in your Google Drive. Sign in with your Google account to see them."}</p>
+      <button class="fogbtn" type="button" id="fogin">Sign in with Google</button><p style="font-size:12px" id="fogerr"></p></div>`;
     document.body.append(gate);
     gate.querySelector("#fogin").onclick = () => signIn().then(start).catch(() => {
-      gate.querySelector("#fogerr").textContent = "No se ha podido entrar. Si se ha bloqueado la ventana de Google, permite las ventanas emergentes e inténtalo otra vez.";
+      gate.querySelector("#fogerr").textContent = "Could not sign in. If the Google window was blocked, allow pop-ups and try again.";
     });
   }
   function showBanner(){
     if (!ready){ showGate(); return; }
     if (banner) return;
     banner = document.createElement("div"); banner.className = "fogbanner";
-    banner.innerHTML = `<span>La sesión con Google ha caducado</span><button class="fogbtn" type="button">Continuar</button>`;
+    banner.innerHTML = `<span>Your Google session has expired</span><button class="fogbtn" type="button">Continue</button>`;
     banner.querySelector("button").onclick = () => signIn().catch(() => {});
     document.body.append(banner);
   }
@@ -180,14 +180,14 @@
   function start(){
     if (started) return started;
     started = (async () => {
-      if (gate) gate.querySelector(".box").innerHTML = `<p>Abriendo tu Drive…</p>`;
+      if (gate) gate.querySelector(".box").innerHTML = `<p>Opening your Drive…</p>`;
       await ensureLayout(); await readRemote();
       ready = true; if (gate){ gate.remove(); gate = null; }
       resolveReady(); emit();
     })().catch(e => { started = null; console.error(e); if (gate){ gate.remove(); gate = null; }
       showGate(e && e.reason === "storageQuotaExceeded"
-        ? "Tu Google Drive está lleno. Libera espacio en one.google.com/storage para poder guardar."
-        : "No se ha podido abrir tu Drive. Vuelve a entrar con Google."); });
+        ? "Your Google Drive is full. Free up space at one.google.com/storage to be able to save."
+        : "Could not open your Drive. Sign in with Google again."); });
     return started;
   }
   if (tokenOk()) start(); else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => showGate()); else showGate();

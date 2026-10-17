@@ -127,6 +127,9 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
     <div class="cpick"><select id="cpais" aria-label="Pick a country to see its cities"><option value="">Pick a country to see its cities…</option></select><div class="chips" id="cchips"></div><button type="button" class="cdone" id="cdone" hidden>✓ Done, back to the world map</button></div>
     <div class="search csearch"><input id="cq" type="search" placeholder="Not in the list? Search all cities…" autocomplete="off" aria-label="Search for a city to add"></div>
     <ul class="cres" id="cres"></ul>
+    <details class="cmanual"><summary>Can't find it? Add a city by hand</summary>
+      <div class="cmrow"><input id="mname" type="text" placeholder="City or town name" autocomplete="off" aria-label="Name of the city"><select id="mpais" aria-label="Country of the city"><option value="">Country…</option></select><button type="button" id="mgo">Place it on the map</button></div>
+    </details>
     <p class="status cstat" id="cstatus" aria-live="polite"></p>
     <h3 class="ctitle">My cities</h3>
     <div class="clist" id="clist"></div>
@@ -135,7 +138,7 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
 
 <script src="fog-license.js?v=3"></script>
 <script src="fog-local.js?v=3"></script>
-<script src="fog-ciudades.js?v=2"></script>
+<script src="fog-ciudades.pro.js?v=1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
@@ -289,7 +292,8 @@ const DATA=window.FOG_CITIES||{};
 const candG=g.append("g").attr("class","cands");
 const hitG=g.append("g").attr("class","chits");
 let cSel="";
-const CAND=[];for(const cc in DATA)DATA[cc].forEach((r,i)=>CAND.push({cc,r,i}));
+const nz=v=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const CAND=[];for(const cc in DATA)DATA[cc].forEach((r,i)=>CAND.push({cc,r,i,q:nz(r[1])}));
 function candXY(o){return o.xy||(o.xy=proj([o.r[3],o.r[2]]));}
 function drawCands(){candG.selectAll("*").remove();}
 const cpais=$("cpais"),cchips=$("cchips");
@@ -307,10 +311,10 @@ cpais.onchange=()=>{cSel=cpais.value;$("cdone").hidden=!cSel;chipsAll=false;rend
 function renderChips(){
   cchips.textContent="";if(!cSel)return;
   const have=new Set(cities.map(c=>c.id));const list=DATA[cSel]||[];
-  const shown=chipsAll?list:list.slice(0,30);
+  const shown=chipsAll?list.slice(0,200):list.slice(0,30);
   for(const r of shown){const b=document.createElement("button");b.type="button";b.textContent=r[1];const on=have.has("g"+r[0]);b.setAttribute("aria-pressed",on);
     b.onclick=()=>{const c=fromData(cSel,r);if(on){const x=cities.find(y=>y.id===c.id);if(x)removeCity(x);}else addC(c);};cchips.append(b);}
-  if(!chipsAll&&list.length>30){const m=document.createElement("button");m.type="button";m.className="more";m.textContent="Show all ("+list.length+")";m.onclick=()=>{chipsAll=true;renderChips();};cchips.append(m);}
+  if(!chipsAll&&list.length>30){const m=document.createElement("button");m.type="button";m.className="more";m.textContent=list.length>200?"Show more":"Show all ("+list.length+")";m.onclick=()=>{chipsAll=true;renderChips();};cchips.append(m);}
 }
 function drawCities(){
   drawCands();
@@ -381,11 +385,10 @@ function removeCity(c,silent){
 let st=null,seq=0;
 cq.addEventListener("input",()=>{clearTimeout(st);const t=cq.value.trim();if(t.length<2){seq++;cres.textContent="";return;}st=setTimeout(()=>search(t),300);});
 cq.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const b=cres.querySelector("button:not(:disabled)");if(b)b.click();}});
-const nz=v=>v.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 function search(t){
   const my=++seq;const q=nz(t);cres.textContent="";
-  const hits=CAND.filter(o=>nz(o.r[1]).includes(q)).sort((x,y)=>(nz(x.r[1]).startsWith(q)?0:1)-(nz(y.r[1]).startsWith(q)?0:1)||x.i-y.i).slice(0,8);
-  if(!hits.length){const li=document.createElement("li");li.className="cnone";li.textContent="No city found with that name.";cres.append(li);return;}
+  const hits=CAND.filter(o=>o.q.includes(q)).sort((x,y)=>(x.q.startsWith(q)?0:1)-(y.q.startsWith(q)?0:1)||x.i-y.i).slice(0,10);
+  if(!hits.length){const li=document.createElement("li");li.className="cnone";li.textContent="No city found with that name. You can add it by hand below.";cres.append(li);return;}
   for(const o of hits){
     const x=fromData(o.cc,o.r);
     const li=document.createElement("li");const b=document.createElement("button");b.type="button";
@@ -396,6 +399,29 @@ function search(t){
     b.append(nm,sp,em);b.onclick=()=>addC(x);li.append(b);cres.append(li);
   }
 }
+/* Manual city: name + country, then tap the map */
+let placing=null;
+const mname=$("mname"),mpais=$("mpais"),mgo=$("mgo");
+Object.keys(A2ID).sort((a,b)=>cname(a).localeCompare(cname(b),"en")).forEach(a=>{const op=document.createElement("option");op.value=a;op.textContent=cname(a);mpais.append(op);});
+cpais.addEventListener("change",()=>{if(cpais.value)mpais.value=cpais.value;});
+mgo.onclick=()=>{
+  const n=mname.value.trim();
+  if(!n){say("Type the city name first.");mname.focus();return;}
+  if(!mpais.value){say("Pick the country first.");mpais.focus();return;}
+  placing={n,cc:mpais.value};mgo.textContent="Now tap the map… (cancel)";svg.classed("placing",true);
+  say("Tap the map where "+n+" is. Zoom in first for more precision.");
+  if(A2ID[placing.cc])zoomCountry(A2ID[placing.cc]);
+  plate.scrollIntoView({behavior:"smooth",block:"center"});
+};
+function stopPlacing(){placing=null;mgo.textContent="Place it on the map";svg.classed("placing",false);}
+mgo.addEventListener("click",()=>{if(!placing&&mgo.textContent.includes("cancel"))stopPlacing();},true);
+svg.on("click.place",e=>{
+  if(!placing)return;
+  const [px,py]=d3.pointer(e,g.node());const ll=proj.invert([px,py]);
+  if(!ll||!isFinite(ll[0])||!isFinite(ll[1]))return;
+  const c={id:"m"+Date.now().toString(36),n:placing.n,adm:"",cc:placing.cc,cn:cname(placing.cc),lat:+ll[1].toFixed(4),lon:+ll[0].toFixed(4)};
+  stopPlacing();mname.value="";addC(c);
+});
 let cwriting=false,cpending=false,cStamp="";
 function saveCities(){
   cStamp=new Date().toISOString();
@@ -469,6 +495,12 @@ body.mc .tools,body.mc #regSec{display:none}
 .cstat button{color:var(--visit-ink);font-weight:700}
 .cpick{display:flex;flex-direction:column;gap:10px}
 .cpick select{font:inherit;font-size:1rem;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);max-width:560px;width:100%}
+.cmanual{max-width:560px;font-size:.92rem;color:var(--muted)}
+.cmanual summary{cursor:pointer;padding:4px 2px}
+.cmrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.cmrow input,.cmrow select{font:inherit;font-size:1rem;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);flex:1 1 180px;min-width:0}
+.cmrow button{font:inherit;font-weight:700;padding:10px 16px;border-radius:8px;border:0;background:var(--visit-ink);color:#fff;cursor:pointer}
+.plate svg.placing{cursor:crosshair}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:.9rem;padding:6px 12px;border-radius:999px;cursor:pointer}
 .chips button[aria-pressed="true"]{background:var(--visit-ink);border-color:var(--visit-ink);color:#fff;font-weight:700}

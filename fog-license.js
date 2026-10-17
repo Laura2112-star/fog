@@ -3,7 +3,7 @@
 (() => {
   "use strict";
   const CODE_HASH = "c0887484c9e25505f64df14c11661e9542e817db2ff8fd5daf0384c0ec25c2df";
-  const BUY_URL = "https://buy.stripe.com/28E14h9Dc4vh0zL5SQ0sU00";
+  const BUY_URL = "https://buy.stripe.com/5kQbIV2aKbXJeqB80Y0sU01";
   const K = "fog.pro.unlocked";
   const LS = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
   const css = document.createElement("style");

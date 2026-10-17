@@ -9,6 +9,10 @@ Mapa del mundo con los países visitados.
   - Tema de colores "Trópico" (bloque `<style id="fog-tropico">` y el degradado `fogGrad` al final de `index.html`).
   - Iconos y `manifest.webmanifest` para el móvil.
 
+## Versión sin cuenta (mapa.html)
+
+https://laura2112-star.github.io/fog/mapa.html es la misma app sin Google: usa `fog-local.js`, que guarda los países en el propio móvil (localStorage) y añade los botones **Guardar copia** y **Cargar copia** (archivo JSON con el mismo formato que `fog-datos.json`). Tiene su propio `mapa.webmanifest`. Es la que usa el hijo de Laura.
+
 ## Cómo volver a crear el artefacto en otra cuenta de Claude
 
 1. Toma `index.html` y quita la línea `<script src="fog-shim.js?v=1"></script>`. Sin ella, la página usa el almacenamiento de los artefactos (`db.doc("mapa/visitados")`).

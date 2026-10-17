@@ -83,7 +83,7 @@ button:focus-visible,.nm:focus-visible{outline:2px solid var(--visit);outline-of
     <div class="stats">
       <div class="stat"><b id="sCount">0</b><span>países</span></div>
       <div class="stat"><b id="sCont">0</b><span>continentes</span></div>
-      <div class="stat"><b id="sPct">0%</b><span>de la tierra</span></div>
+      <div class="stat"><b id="sPct">0%</b><span>de los países</span></div>
     </div>
     <div class="stats" id="statsC" hidden>
       <div class="stat"><b id="cCount">0</b><span>ciudades</span></div>
@@ -167,7 +167,7 @@ g.append("path").attr("class","land").attr("d",path(topojson.merge(TOPO,geoms)))
 // one feature per country id (merge multi-part ids)
 const byId=d3.group(geoms,d=>d.id);
 const feats=[...byId].filter(([id])=>META[id]).map(([id,gs])=>({id,geo:topojson.merge(TOPO,gs)}));
-const totalArea=d3.sum(feats,f=>f.id==="010"?0:d3.geoArea(f.geo));
+const totalArea=d3.sum([...byId],([id,gs])=>id==="010"?0:d3.geoArea(topojson.merge(TOPO,gs)));
 feats.forEach(f=>{f.area=d3.geoArea(f.geo);f.cen=proj(d3.geoCentroid(f.geo));
   const b=path.bounds(f.geo);f.small=(b[1][0]-b[0][0])<4&&(b[1][1]-b[0][1])<4;});
 const cs=g.append("g").selectAll("path").data(feats).join("path")
@@ -209,8 +209,7 @@ function render(){
   document.getElementById("sCount").innerHTML=ids.length+'<small class="tot"> / '+Object.keys(META).length+'</small>';
   const conts=new Set(ids.map(id=>META[id].c));
   document.getElementById("sCont").textContent=conts.size;
-  const a=d3.sum(feats.filter(f=>visited.has(f.id)&&f.id!=="010"),f=>f.area);
-  const pct=a/totalArea*100;
+  const pct=ids.length/Object.keys(META).length*100;
   document.getElementById("sPct").textContent=(pct>0&&pct<1?pct.toFixed(1):Math.round(pct))+"%";
   rows.forEach((r,id)=>{const on=visited.has(id);r.li.classList.toggle("on",on);r.cb.checked=on;});
   boxes.forEach((b,c)=>{b.count.innerHTML="<b>"+ids.filter(id=>META[id].c===c).length+"</b> / "+b.total;});
